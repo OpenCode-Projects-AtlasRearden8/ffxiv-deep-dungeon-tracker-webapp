@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Dungeon Tracker</title>
+<style>
+  :root {
+    --bg: #101314;
+    --panel: #191d1f;
+    --panel-2: #202527;
+    --line: #2e3437;
+    --text: #e8e6e1;
+    --muted: #9aa3a7;
+    --accent: #d8a04a;
+    --accent-2: #4fb3a9;
+    --danger: #c75757;
+    --good: #6bab5b;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    color: var(--text);
+    background: radial-gradient(1200px 500px at 50% -100px, #1c2326, var(--bg));
+    min-height: 100vh;
+  }
+  a { color: var(--accent-2); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 0.25rem; letter-spacing: 0.02em; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin: 0 0 1rem; }
+  h2 { font-size: 1.05rem; margin: 1.5rem 0 0.6rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+  .tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; margin: 0 0 1rem; }
+  .tab-btn {
+    appearance: none; border: 1px solid var(--line); background: var(--panel);
+    color: var(--muted); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;
+    font-size: 0.9rem; font-weight: 600;
+  }
+  .tab-btn[aria-selected="true"] { color: var(--text); background: var(--panel-2); border-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 0.6rem; padding: 0.9rem 1rem; margin-bottom: 1rem;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+  .grow { flex: 1 1 auto; }
+  select, input[type="text"] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 0.4rem; padding: 0.45rem 0.6rem; font-family: inherit; font-size: 0.9rem;
+  }
+  input[type="text"] { width: 100%; }
+  .note-input { padding: 0.35rem 0.5rem; font-size: 0.82rem; }
+  button {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--text); border-radius: 0.4rem; padding: 0.45rem 0.8rem; cursor: pointer;
+    font-family: inherit; font-size: 0.85rem;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #17120a; border-color: var(--accent); font-weight: 700; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.danger { color: #f2b3b3; border-color: #6a3535; background: #241717; }
+  button.danger:hover { border-color: var(--danger); }
+  button.ghost { background: transparent; }
+  button.small { padding: 0.25rem 0.55rem; font-size: 0.78rem; }
+  .muted { color: var(--muted); font-size: 0.83rem; }
+  .tiny { color: var(--muted); font-size: 0.75rem; }
+  .empty { color: var(--muted); font-style: italic; padding: 0.4rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  tr:last-child td { border-bottom: none; }
+  .run-head { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; margin-bottom: 0.5rem; }
+  .run-title { font-weight: 700; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.5rem 0; }
+  .tag {
+    display: inline-block; padding: 0.1rem 0.45rem; border-radius: 0.3rem;
+    font-size: 0.7rem; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+  }
+  .tag.gold { color: var(--accent); border-color: #5c4620; }
+  .tag.ko { color: #e2a3a3; border-color: #5c2f2f; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.6rem; }
+  .ref-card { background: var(--panel); border: 1px solid var(--line); border-radius: 0.6rem; padding: 0.7rem 0.8rem; }
+  .ref-card .name { font-weight: 700; color: var(--accent); font-size: 0.9rem; }
+  .ref-card.bad .name { color: #d98484; }
+  .ref-card.good .name { color: var(--good); }
+  .ref-card .effect { font-size: 0.83rem; margin: 0.3rem 0; }
+  .ref-card .tip { color: var(--muted); font-size: 0.78rem; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem; }
+  .pill {
+    border: 1px solid var(--line); border-radius: 999px; padding: 0.3rem 0.8rem;
+    background: var(--panel); color: var(--muted); cursor: pointer; font-size: 0.85rem;
+  }
+  .pill[aria-selected="true"] { color: var(--text); border-color: var(--accent-2); background: var(--panel-2); }
+  .check-item { display: flex; gap: 0.6rem; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
+  .check-item:last-child { border-bottom: none; }
+  .check-item input[type="checkbox"] { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); flex-shrink: 0; }
+  .check-item .done { text-decoration: line-through; color: var(--muted); }
+  .check-item input[type="text"] { border-color: transparent; background: transparent; }
+  .check-item input[type="text"]:focus { border-color: var(--line); background: var(--bg); }
+  .pb-floor { color: var(--text); font-weight: 700; }
+  .pb-ms { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+  .ug { color: var(--muted); }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.78rem; text-align: center; }
+  .died-emoji, .confirm-live { display: none; }
+  .detail { margin-top: 0.4rem; }
+  summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
+  summary:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Deep Dungeon Tracker</h1>
+  <p class="subtitle">Offline, local-first run tracker for the Palace of the Dead, Heaven-on-High, and Eureka Orthos. Everything is saved in your browser's localStorage; nothing leaves your device.</p>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab-btn" role="tab" data-tab="run" aria-selected="true">Runs</button>
+    <button class="tab-btn" role="tab" data-tab="bests" aria-selected="false">Personal Bests</button>
+    <button class="tab-btn" role="tab" data-tab="reference" aria-selected="false">Quick Reference</button>
+    <button class="tab-btn" role="tab" data-tab="checklists" aria-selected="false">Next-Run Checklist</button>
+  </div>
+
+  <section class="tab-panel active" id="panel-run" role="tabpanel">
+    <div class="card">
+      <h2 style="margin-top:0">Start a New Run</h2>
+      <div class="row">
+        <label class="muted" for="new-dungeon">Dungeon</label>
+        <select id="new-dungeon"></select>
+        <label class="muted" for="new-start">Start floor</label>
+        <select id="new-start"></select>
+        <button class="primary" id="btn-start-run">Start Run</button>
+      </div>
+    </div>
+    <div id="active-runs"></div>
+    <div id="ended-runs"></div>
+  </section>
+
+  <section class="tab-panel" id="panel-bests" role="tabpanel">
+    <p class="muted">Personal bests are computed from your saved runs: deepest floor ever reached, and your fastest time from run start to each boss-checkpoint floor (every 10 floors). If a run begins at a later floorset, that entry floor doesn't count as a new record.</p>
+    <div id="bests-output"></div>
+  </section>
+
+  <section class="tab-panel" id="panel-reference" role="tabpanel">
+    <div class="pill-row" id="ref-pills" role="tablist" aria-label="Choose dungeon"></div>
+    <div id="ref-output"></div>
+  </section>
+
+  <section class="tab-panel" id="panel-checklists" role="tabpanel">
+    <p class="muted">Low-energy, ADHD-friendly pre-run checklist. Tick items off, edit them, or reset to the suggested defaults at any time.</p>
+    <div class="pill-row" id="check-pills" role="tablist" aria-label="Choose dungeon"></div>
+    <div id="check-output"></div>
+  </section>
+
+  <footer>
+    Deep Dungeon Tracker &middot; by <strong>Asdale Dynamics, LLC</strong> &middot; MIT License &middot; Data saved locally in your browser.<br>
+    FFXIV and its content are property of Square Enix Co., Ltd. This tool is a fan-made tracker and is not affiliated with or endorsed by Square Enix.
+  </footer>
+</div>
+
+<script>
+/* ===== PURE-LOGIC-START (exercised by tests/run-tests.js) ===== */
+var STORAGE_KEYS = { runs: "dd_runs_v1", checklists: "dd_checklists_v1" };
+
+var COMMON_ENTRY = { name: "Safety", effect: "Removes all traps from the current floor (does not affect Mimics hiding in coffers).", tip: "Use as soon as you enter a floor. Best on Hall of Fallacies-style floors." };
+var DUNGEONS = {
+  potd: {
+    id: "potd",
+    name: "Palace of the Dead",
+    short: "PotD",
+    maxFloor: 200,
+    startFloors: [1, 51, 101],
+    floorsPerSet: 10,
+    itemNoun: "Pomander",
+    potionItem: "Gelmorran Potsherd stash (for Potions)",
+    hoardItem: "Accursed Hoard",
+    pomanders: [
+      { name: "Safety", effect: "Removes all traps from the current floor (does not affect Mimics hiding in coffers).", tip: "Use as soon as you enter a floor." },
+      { name: "Sight", effect: "Reveals the current floor's map and the location of all hidden traps.", tip: "Plan routes and landmine plays around what Sight reveals." },
+      { name: "Strength", effect: "Increases damage dealt and HP recovered via healing magic by 30% (8 minutes).", tip: "Pair with Steel; use one while the other runs." },
+      { name: "Steel", effect: "Decreases damage received by 40% (8 minutes).", tip: "Solo, this is what makes many upper-floor enemies survivable." },
+      { name: "Affluence", effect: "Increases the number of treasure coffers on the next floor (+50%, rounded down).", tip: "Great before a floor you plan to wipe." },
+      { name: "Flight", effect: "Decreases the number of enemies on the next floor (per room and required kills halved, rounded up).", tip: "Combos with Affluence to farm coffers cheaply." },
+      { name: "Alteration", effect: "Changes all enemies occupying a random room on the next floor into Mimics or Mandragoras.", tip: "Both drop lots of chests; avoid stacking with Flight." },
+      { name: "Purity", effect: "Removes the Pox status.", tip: "Some floors' Accursed Pox can also be silenced mid-cast." },
+      { name: "Fortune", effect: "Increases the chance enemies on the current floor drop treasure coffers (about +12%).", tip: "Best before big clear-outs (Rage, Magicite, many kills)." },
+      { name: "Witching", effect: "Transforms all targets within range into a frog, imp, or chicken.", tip: "Panic button; also the key to landmine tactics on high floors. Imps still hit hard." },
+      { name: "Serenity", effect: "Removes all enchantments (floor effects) from the current floor.", tip: "Don't let one cancel your Strength/Steel/Flight buffs by mistake." },
+      { name: "Intuition", effect: "Reveals the current floor's hidden Accursed Hoard.", tip: "Use by the 7th floor of a set latest; effect persists until a hoard is found." },
+      { name: "Raising", effect: "Instantly raises the first party member KO'd.", tip: "Save for the last floorsets; stops dropping in the highest sets." },
+      { name: "Rage", effect: "POTD ONLY. Transforms you into a Manticore for 60s; Pummel kills most non-boss enemies in one hit.", tip: "Clear whole floors fast; needs knockback to one-shot, so avoid Knockback Penalty floors." },
+      { name: "Lust", effect: "POTD ONLY. Transforms you into a Succubus for 60s; Void Fire II damages a circle around your target and stacks vulnerability.", tip: "Strong pick for speeding up boring boss fights." },
+      { name: "Resolution", effect: "POTD ONLY. Transforms you into Kuribu for 60s; Heavenly Judge deals big damage (bonus vs. ashkin/undead) and stuns.", tip: "Star of floors 91-100 and 191-199; shuts down floor-100 boss adds." }
+    ],
+    floorEffects: [
+      { name: "Auto-heal Penalty", desc: "HP regeneration is disabled for all party members.", kind: "bad" },
+      { name: "Blindness", desc: "Accuracy of all party members is reduced.", kind: "bad" },
+      { name: "Damage Penalty", desc: "Damage dealt by all party members is reduced.", kind: "bad" },
+      { name: "Gloom", desc: "Enemies move faster, hit harder, and take less damage.", kind: "bad" },
+      { name: "HP Penalty", desc: "Maximum HP of all party members is reduced.", kind: "bad" },
+      { name: "Inability", desc: "Use of abilities is prohibited for all party members.", kind: "bad" },
+      { name: "Item Penalty", desc: "Use of items (including pomanders) is prohibited. Serenity still works and removes it.", kind: "bad" },
+      { name: "Knockback Penalty", desc: "Knockback and draw-in are disabled; Rage/Resolution one-hit tricks stop working.", kind: "bad" },
+      { name: "Sprint Penalty", desc: "Use of the Sprint action is prohibited.", kind: "bad" },
+      { name: "Haste", desc: "Weaponskill/spell recast and auto-attack delay are reduced. (Beneficial.)", kind: "good" },
+      { name: "HP/MP Boost", desc: "Maximum HP and MP are increased. (Beneficial.)", kind: "good" },
+      { name: "Sprint", desc: "Movement speed is increased. (Beneficial.)", kind: "good" }
+    ],
+    traps: [
+      { name: "Impeding", desc: "Silences and pacifies everyone in the area (enemies too). Esuna or Echo Drops clear it." },
+      { name: "Toading", desc: "Turns whoever steps on it into a toad for 20 seconds; no skills or items.", tip: "Never run into a room mid-fight." },
+      { name: "Land Mine", desc: "Large-damage blast on trigger. Higher floors: deliberate landmine plays (Witching first) turn these into full-floor wipes.", kind: "danger" },
+      { name: "Luring", desc: "Draws nearby monsters toward you when triggered.", tip: "Watch for it when sprinting past rooms." },
+      { name: "Coffer Mimic", desc: "Coffers can be Mimics; silver/gold coffers burst with a damaging debuff (Pox).", tip: "Safety does not remove these." }
+    ]
+  },
+  hoh: {
+    id: "hoh",
+    name: "Heaven-on-High",
+    short: "HoH",
+    maxFloor: 100,
+    startFloors: [1, 21],
+    floorsPerSet: 10,
+    itemNoun: "Pomander",
+    potionItem: "Empyrean Potsherd stash (Empyrean Potions)",
+    hoardItem: "Accursed Hoard",
+    pomanders: [
+      { name: "Safety", effect: "Removes all traps from the current floor; in Hall of Fallacies it also removes fake beacons. Mimics are not affected.", tip: "Standard play in Hall of Fallacies floorsets." },
+      { name: "Sight", effect: "Reveals the current floor's map and the location of all hidden traps.", tip: "Use to find the exit fast, or to plan landmines." },
+      { name: "Strength", effect: "Increases damage dealt and HP recovered via healing magic by 30% (8 minutes).", tip: "Pair with Steel or Frailty." },
+      { name: "Steel", effect: "Decreases damage received by 40% (8 minutes).", tip: "Required to survive some solo fights in higher floors." },
+      { name: "Affluence", effect: "Increases the number of treasure coffers on the next floor (+50%, rounded down).", tip: "Use when missing key pomanders." },
+      { name: "Flight", effect: "Decreases the number of enemies on the next floor (per room and required kills halved, rounded up).", tip: "Pairs with Affluence; clashes with Alteration." },
+      { name: "Alteration", effect: "Changes all enemies occupying a random room on the next floor into Mimics or Mandragoras.", tip: "Mimics/Mandragoras drop plenty of chests." },
+      { name: "Purity", effect: "Removes the Pox status.", tip: "Use when Pox actually threatens your run." },
+      { name: "Fortune", effect: "Increases the chance enemies on the current floor drop treasure coffers (about +12%).", tip: "Great before Magicite hall clears." },
+      { name: "Witching", effect: "Transforms all targets within range into a frog, imp, or chicken.", tip: "Imps keep aggro type and still hurt." },
+      { name: "Serenity", effect: "Removes all enchantments (floor effects) from the current floor.", tip: "Floor 99 always has 3 enchantments; save one for it." },
+      { name: "Intuition", effect: "Reveals the current floor's hidden Accursed Hoard.", tip: "Effect persists until a hoard is found; stock 3 before platinum-sack floorsets." },
+      { name: "Raising", effect: "Instantly raises the first party member KO'd.", tip: "No longer drops from floors 81+." },
+      { name: "Frailty", effect: "HOH ONLY. Weakens all enemies on the current floor for 3 minutes (they deal less and take more).", tip: "A weaker Strength+Steel in one slot; works on bosses." },
+      { name: "Concealment", effect: "HOH ONLY. Renders the party invisible to enemies and traps.", tip: "Cancelled by abilities/pomanders; Sprint is safe. Tests fake beacons too." },
+      { name: "Petrification", effect: "HOH ONLY. Turns all enemies on the current floor to stone.", tip: "Wait for Sprint, plan a route, then run." },
+      { name: "Magicite note", effect: "HOH EXTRA: Magicite summons hit every enemy on the floor for a chunk of max HP (Elder Magicite can one-shot bosses).", tip: "Stack with Fortune and Witching for Hall of Fallacies." }
+    ],
+    floorEffects: [
+      { name: "Auto-heal Penalty", desc: "HP regeneration is disabled for all party members.", kind: "bad" },
+      { name: "Blindness", desc: "Accuracy of all party members is reduced.", kind: "bad" },
+      { name: "Damage Penalty", desc: "Damage dealt by all party members is reduced.", kind: "bad" },
+      { name: "Gloom", desc: "Enemies move faster, hit harder, and take less damage.", kind: "bad" },
+      { name: "HP Penalty", desc: "Maximum HP of all party members is reduced.", kind: "bad" },
+      { name: "Inability", desc: "Use of abilities is prohibited for all party members.", kind: "bad" },
+      { name: "Item Penalty", desc: "Use of items (including pomanders) is prohibited. Serenity still works and removes it.", kind: "bad" },
+      { name: "Sprint Penalty", desc: "Use of the Sprint action is prohibited.", kind: "bad" },
+      { name: "Magicite Penalty", desc: "Magicite use is disabled (HoH only).", kind: "bad" },
+      { name: "Haste", desc: "Weaponskill/spell recast and auto-attack delay are reduced. (Beneficial.)", kind: "good" },
+      { name: "HP/MP Boost", desc: "Maximum HP and MP are increased. (Beneficial.)", kind: "good" },
+      { name: "Sprint", desc: "Movement speed is increased. (Beneficial.)", kind: "good" }
+    ],
+    traps: [
+      { name: "Impeding", desc: "Silences and pacifies everyone in the area (enemies too). Esuna clears it." },
+      { name: "Toading", desc: "Turns whoever steps on it into a toad for 20 seconds; no skills or items." },
+      { name: "Land Mine", desc: "Large-damage blast on trigger.", kind: "danger" },
+      { name: "Luring", desc: "Draws nearby monsters toward you when triggered." },
+      { name: "Coffer Mimic", desc: "Coffers can be Mimics; bursting ones apply a debuff (Pox)." }
+    ]
+  },
+  eo: {
+    id: "eo",
+    name: "Eureka Orthos",
+    short: "Evo",
+    maxFloor: 100,
+    startFloors: [1, 21],
+    floorsPerSet: 10,
+    itemNoun: "Protomander",
+    potionItem: "Orthos Aetherpool Fragment stash (Orthos Potions)",
+    hoardItem: "Accursed Hoard",
+    pomanders: [
+      { name: "Safety", effect: "Removes all traps from the current floor (does not affect Mimics in coffers).", tip: "Use as soon as you enter a floor." },
+      { name: "Sight", effect: "Reveals the current floor's map and the location of all hidden traps.", tip: "Route planning matters more in EO; use it." },
+      { name: "Strength", effect: "Increases damage dealt and HP recovered via healing magic by 30% (8 minutes).", tip: "Pair with Demiclones or Steel." },
+      { name: "Steel", effect: "Decreases damage received by 40% (8 minutes).", tip: "EO bosses hit hard; Steel buys margin." },
+      { name: "Affluence", effect: "Increases the number of treasure coffers on the next floor (+50%, rounded down).", tip: "Use when your protomander stack is thin." },
+      { name: "Flight", effect: "Decreases the number of enemies on the next floor (per room and required kills halved, rounded up).", tip: "Good with Affluence, wasted with Alteration." },
+      { name: "Alteration", effect: "Changes all enemies occupying a random room on the next floor into Mimics or Mandragoras.", tip: "Both drop lots of chests." },
+      { name: "Purity", effect: "Removes the Pox status.", tip: "Don't hoard it; Pox hurts your tempo." },
+      { name: "Fortune", effect: "Increases the chance enemies on the current floor drop treasure coffers (about +12%).", tip: "Use before Storms wipes to restock." },
+      { name: "Witching", effect: "Transforms all targets within range into a frog, imp, or chicken.", tip: "Imps still do significant damage." },
+      { name: "Serenity", effect: "Removes all enchantments (floor effects) from the current floor.", tip: "Also refreshes floors with annoying Demiclone/Item penalties." },
+      { name: "Intuition", effect: "Reveals the current floor's hidden Accursed Hoard.", tip: "No longer drops from floors 81+; spend it before then." },
+      { name: "Raising", effect: "Instantly raises the first party member KO'd.", tip: "Doesn't count as a solo-run KO; save for the last sets." },
+      { name: "Lethargy", effect: "EO ONLY. Inflicts a heavy slow on all enemies for 10 minutes (casts and auto-attacks lag badly).", tip: "Great panic button vs. quick telegraphs." },
+      { name: "Storms", effect: "EO ONLY. Reduces the HP of all enemies on the current floor to single digits.", tip: "Finish with one AoE; pairs with Fortune, shines on Auto-heal Penalty floors." },
+      { name: "Dread", effect: "EO ONLY. Transforms you into a Dreadnaught for 60s; Rotosmash one-hit-kills most enemies, Wrecking Ball applies vulnerability.", tip: "Like PotD Rage; beware Knockback Penalty floors and Dread Beasts." },
+      { name: "Demiclone note", effect: "EO EXTRA: Demiclone Generators spawn an Allagan clone (red = damage, green = support).", tip: "Stack them with Strength for fast floor clears." }
+    ],
+    floorEffects: [
+      { name: "Auto-heal Penalty", desc: "HP regeneration is disabled for all party members.", kind: "bad" },
+      { name: "Blindness", desc: "Accuracy of all party members is reduced.", kind: "bad" },
+      { name: "Damage Penalty", desc: "Damage dealt by all party members is reduced.", kind: "bad" },
+      { name: "Gloom", desc: "Enemies move faster, hit harder, and take less damage.", kind: "bad" },
+      { name: "HP Penalty", desc: "Maximum HP of all party members is reduced.", kind: "bad" },
+      { name: "Inability", desc: "Use of abilities is prohibited for all party members.", kind: "bad" },
+      { name: "Item Penalty", desc: "Use of items (including protomanders) is prohibited. Serenity still works and removes it.", kind: "bad" },
+      { name: "Knockback Penalty", desc: "Knockback and draw-in are disabled; Rage/Dread one-hit tricks stop working.", kind: "bad" },
+      { name: "Sprint Penalty", desc: "Use of the Sprint action is prohibited.", kind: "bad" },
+      { name: "Demiclone Penalty", desc: "Use of Demiclone Generators is disabled (EO only).", kind: "bad" },
+      { name: "Haste", desc: "Weaponskill/spell recast and auto-attack delay are reduced. (Beneficial.)", kind: "good" },
+      { name: "HP/MP Boost", desc: "Maximum HP and MP are increased. (Beneficial.)", kind: "good" },
+      { name: "Sprint", desc: "Movement speed is increased. (Beneficial.)", kind: "good" }
+    ],
+    traps: [
+      { name: "Impeding", desc: "Silences and pacifies everyone in the area (enemies too). Esuna clears it." },
+      { name: "Toading", desc: "Turns whoever steps on it into a toad for 20 seconds; no skills or items." },
+      { name: "Land Mine", desc: "Large-damage blast on trigger.", kind: "danger" },
+      { name: "Luring", desc: "Draws nearby monsters toward you when triggered." },
+      { name: "Coffer Mimic", desc: "Coffers can be Mimics; bursting ones apply a debuff (Pox)." }
+    ]
+  }
+};
+
+function checkDungeon(id) {
+  if (!DUNGEONS[id]) { throw new Error("Unknown dungeon: " + id); }
+  return DUNGEONS[id];
+}
+
+function milestoneFloors(dungeonId) {
+  var d = checkDungeon(dungeonId);
+  var out = [];
+  for (var f = d.floorsPerSet; f <= d.maxFloor; f += d.floorsPerSet) { out.push(f); }
+  return out;
+}
+
+function floorSetOf(floor) {
+  return Math.ceil(floor / 10);
+}
+
+function isSetEnd(floor) {
+  return floor % 10 === 0;
+}
+
+function validateNewRun(dungeonId, startFloor) {
+  var d = checkDungeon(dungeonId);
+  if (d.startFloors.indexOf(startFloor) === -1) {
+    throw new Error("Invalid start floor for " + d.name + ": " + startFloor);
+  }
+  return true;
+}
+
+function createRun(dungeonId, startFloor, opts) {
+  validateNewRun(dungeonId, startFloor);
+  opts = opts || {};
+  var now = opts.now || new Date().toISOString();
+  return {
+    id: opts.id || "run-" + Math.random().toString(36).slice(2, 10) + "-" + now.replace(/[^0-9]/g, ""),
+    dungeon: dungeonId,
+    startFloor: startFloor,
+    startedAt: now,
+    endedAt: null,
+    floors: {}
+  };
+}
+
+function runEnded(run) {
+  return Boolean(run && run.endedAt);
+}
+
+function nextFloorToLog(run) {
+  if (!run || runEnded(run)) { return null; }
+  var max = checkDungeon(run.dungeon).maxFloor;
+  for (var f = run.startFloor + 1; f <= max; f++) {
+    if (!run.floors[f]) { return f; }
+  }
+  return null;
+}
+
+function floorsAscending(run) {
+  return Object.keys(run.floors || {})
+    .map(function (k) { return parseInt(k, 10); })
+    .filter(function (f) { return Number.isFinite(f); })
+    .sort(function (a, b) { return a - b; });
+}
+
+function elapsedMs(startIso, atIso) {
+  var ms = new Date(atIso).getTime() - new Date(startIso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) { ms = 0; }
+  return ms;
+}
+
+function floorElapsed(run, floor) {
+  var entry = run.floors[floor];
+  if (!entry || !entry.at) { return null; }
+  return elapsedMs(run.startedAt, entry.at);
+}
+
+function logFloor(run, opts) {
+  opts = opts || {};
+  if (runEnded(run)) { throw new Error("Run has already ended."); }
+  var floor;
+  if (typeof opts.floor === "number") {
+    floor = opts.floor;
+    if (floor <= run.startFloor || floor > checkDungeon(run.dungeon).maxFloor) {
+      throw new Error("Floor out of range: " + floor);
+    }
+  } else {
+    floor = nextFloorToLog(run);
+  }
+  if (floor === null) { throw new Error("Nothing left to log."); }
+  if (run.floors[floor]) { throw new Error("Floor already logged: " + floor); }
+  var next = deepCopyRun(run);
+  next.floors[floor] = { at: opts.at || new Date().toISOString(), deaths: 0, note: "" };
+  return next;
+}
+
+function logDeath(run, floor) {
+  if (!run.floors[floor]) { throw new Error("No log entry for floor " + floor); }
+  var next = deepCopyRun(run);
+  next.floors[floor].deaths = (next.floors[floor].deaths || 0) + 1;
+  return next;
+}
+
+function deepCopyRun(run) {
+  var copy = {};
+  for (var k in run) {
+    if (Object.prototype.hasOwnProperty.call(run, k)) {
+      copy[k] = run[k];
+    }
+  }
+  copy.floors = {};
+  var src = run.floors || {};
+  for (var f in src) {
+    if (Object.prototype.hasOwnProperty.call(src, f)) {
+      copy.floors[f] = {
+        at: src[f].at,
+        deaths: src[f].deaths || 0,
+        note: src[f].note || ""
+      };
+    }
+  }
+  return copy;
+}
+
+function runStats(run) {
+  var list = floorsAscending(run);
+  var deepest = list.length ? list[list.length - 1] : null;
+  var kos = 0;
+  for (var i = 0; i < list.length; i++) { kos += run.floors[list[i]].deaths || 0; }
+  var endIso = run.endedAt || (run.floors[deepest] ? run.floors[deepest].at : null);
+  var duration = endIso ? elapsedMs(run.startedAt, endIso) : null;
+  return { deepestFloor: deepest, kos: kos, durationMs: duration, floorCount: list.length };
+}
+
+function computeBests(runs) {
+  var out = {};
+  Object.keys(DUNGEONS).forEach(function (id) {
+    var d = DUNGEONS[id];
+    var deepest = { floor: 0, runId: null, at: null };
+    var milestones = milestoneFloors(id).map(function (f) {
+      return { floor: f, best: null };
+    });
+    (runs || []).filter(function (r) { return r.dungeon === id; }).forEach(function (r) {
+      floorsAscending(r).forEach(function (floor) {
+        if (floor <= r.startFloor) { return; }
+        var entry = r.floors[floor];
+        if (!entry || !entry.at) { return; }
+        var ms = elapsedMs(r.startedAt, entry.at);
+        if (floor > deepest.floor) {
+          deepest = { floor: floor, runId: r.id, at: entry.at };
+        }
+        var m = milestones.find(function (x) { return x.floor === floor; });
+        if (m && (m.best === null || ms < m.best.ms)) {
+          m.best = { ms: ms, runId: r.id };
+        }
+      });
+    });
+    out[id] = {
+      dungeon: d,
+      deepest: deepest.floor > 0 ? deepest : null,
+      milestones: milestones
+    };
+  });
+  return out;
+}
+
+function formatDuration(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) { return "0s"; }
+  var total = Math.floor(ms / 1000);
+  var h = Math.floor(total / 3600);
+  var m = Math.floor((total % 3600) / 60);
+  var s = total % 60;
+  var parts = [];
+  if (h) { parts.push(h + "h"); }
+  if (m) { parts.push(m + "m"); }
+  if (s || parts.length === 0) { parts.push(s + "s"); }
+  return parts.join(" ");
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    STORAGE_KEYS: STORAGE_KEYS,
+    DUNGEONS: DUNGEONS,
+    checkDungeon: checkDungeon,
+    milestoneFloors: milestoneFloors,
+    floorSetOf: floorSetOf,
+    isSetEnd: isSetEnd,
+    validateNewRun: validateNewRun,
+    createRun: createRun,
+    runEnded: runEnded,
+    nextFloorToLog: nextFloorToLog,
+    floorsAscending: floorsAscending,
+    elapsedMs: elapsedMs,
+    floorElapsed: floorElapsed,
+    logFloor: logFloor,
+    logDeath: logDeath,
+    deepCopyRun: deepCopyRun,
+    runStats: runStats,
+    computeBests: computeBests,
+    formatDuration: formatDuration,
+    escapeHtml: escapeHtml
+  };
+}
+/* ===== PURE-LOGIC-END ===== */
+</script>
+<script>
+(function () {
+  "use strict";
+
+  function safeGet(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch (err) {
+      return fallback;
+    }
+  }
+  function safeSet(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (err) { /* storage unavailable */ }
+  }
+
+  var runs = safeGet(STORAGE_KEYS.runs, []);
+  var checklists = safeGet(STORAGE_KEYS.checklists, {});
+
+  function saveRuns() { safeSet(STORAGE_KEYS.runs, runs); }
+  function saveChecklists() { safeSet(STORAGE_KEYS.checklists, checklists); }
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return escapeHtml(s); }
+
+  function findRun(id) {
+    for (var i = 0; i < runs.length; i++) { if (runs[i].id === id) { return runs[i]; } }
+    return null;
+  }
+
+  function applyToRun(id, fn) {
+    var run = findRun(id);
+    if (!run) { return; }
+    var next = fn(deepCopyRun(run));
+    if (next) {
+      var idx = runs.indexOf(run);
+      runs[idx] = next;
+      saveRuns();
+      render();
+    }
+  }
+
+  function defaultChecklist(dungeonId) {
+    var d = checkDungeon(dungeonId);
+    return [
+      { text: "60+ minutes of uninterrupted time set aside", done: false },
+      { text: "Restored and fully fed (real food, not just a Valfruit)", done: false },
+      { text: d.potionItem + " ready to buy", done: false },
+      { text: "Aetherpool arm/armor at target strength for this floorset", done: false },
+      { text: "Hazards of the target floorset reviewed below in Quick Reference", done: false }
+    ];
+  }
+
+  function checklistFor(dungeonId) {
+    if (!checklists[dungeonId]) {
+      checklists[dungeonId] = defaultChecklist(dungeonId);
+      saveChecklists();
+    }
+    return checklists[dungeonId];
+  }
+
+  var state = {
+    tab: "run",
+    refDungeon: "potd",
+    checkDungeon: "potd"
+  };
+
+  function render() {
+    renderRunTab();
+    renderBests();
+    renderReference();
+    renderChecklists();
+  }
+
+  function renderRunTab() {
+    var dungeonSel = $("new-dungeon");
+    var startSel = $("new-start");
+    if (!dungeonSel || !startSel) { return; }
+    dungeonSel.innerHTML = Object.keys(DUNGEONS).map(function (id) {
+      return '<option value="' + id + '"' + (id === "potd" ? " selected" : "") + ">" + esc(DUNGEONS[id].name) + " (" + esc(DUNGEONS[id].short) + ")</option>";
+    }).join("");
+    syncStartFloors();
+
+    var active = runs.filter(function (r) { return !runEnded(r); });
+    var ended = runs.filter(function (r) { return runEnded(r); });
+
+    var activeArea = $("active-runs");
+    if (active.length === 0) {
+      activeArea.innerHTML = '<p class="empty">No runs in progress. Start one above — then log each floor as you reach it.</p>';
+    } else {
+      activeArea.innerHTML = active.map(function (r) { return renderRunCard(r, false); }).join("");
+    }
+
+    var endedArea = $("ended-runs");
+    if (ended.length === 0) {
+      endedArea.innerHTML = "";
+    } else {
+      endedArea.innerHTML = "<h2>Ended Runs</h2>" + ended.slice().reverse().map(function (r) { return renderRunCard(r, true); }).join("");
+    }
+  }
+
+  function syncStartFloors() {
+    var dungeonSel = $("new-dungeon");
+    var startSel = $("new-start");
+    var d = checkDungeon(dungeonSel.value || "potd");
+    var prev = parseInt(startSel.value, 10);
+    startSel.innerHTML = d.startFloors.map(function (f) {
+      return '<option value="' + f + '">Floor ' + f + "</option>";
+    }).join("");
+    if (d.startFloors.indexOf(prev) !== -1) { startSel.value = String(prev); }
+  }
+
+  function renderRunCard(r, isEnded) {
+    var d = checkDungeon(r.dungeon);
+    var s = runStats(r);
+    var head =
+      '<div class="run-head">' +
+      '<span class="run-title">' + esc(d.name) + '</span>' +
+      '<span class="tag gold">' + esc(d.itemNoun) + " runday</span>" +
+      '<span class="tag">Start floor ' + r.startFloor + "</span>" +
+      '<span class="tag">Started ' + esc(formatEventDate(r.startedAt)) + "</span>" +
+      (s.deepestFloor != null ? '<span class="tag">Deepest logged: FM ' + s.deepestFloor + "</span>" : "") +
+      (s.kos ? '<span class="tag ko">KOs: ' + s.kos + "</span>" : "") +
+      "</div>";
+    var rows = floorsAscending(r).map(function (f) { return floorRow(r, d, f); }).join("");
+    var table = rows
+      ? '<table><thead><tr><th>Floor</th><th>Reached</th><th>Elapsed</th><th>KO</th><th>Notes (died here?)</th></tr></thead><tbody>' + rows + "</tbody></table>"
+      : '<p class="empty tiny">No floors logged yet.</p>';
+    var actions = isEnded
+      ? '<div class="btn-row"><button class="danger small" data-action="delete-run" data-run="' + r.id + '">Delete run</button></div>'
+      : '<div class="btn-row">' +
+        (nextFloorToLog(r) !== null
+          ? '<button class="primary" data-action="log-floor" data-run="' + r.id + '">Arrived at floor ' + nextFloorToLog(r) + "</button>"
+          : '<span class="tag">All floors logged</span>') +
+        '<button data-action="end-run" data-run="' + r.id + '">End run</button>' +
+        '<button class="danger" data-action="delete-run" data-run="' + r.id + '">Delete</button>' +
+        "</div>";
+    return (
+      '<div class="card" data-run="' + r.id + '">' + head +
+      '<div class="detail">' + table + "</div>" + actions +
+      '<details class="detail"><summary>Run summary</summary><p class="tiny">' +
+      "Floors logged: " + s.floorCount + " &middot; Deepest: FM " + (s.deepestFloor == null ? "-" : s.deepestFloor) +
+      " &middot; KOs: " + s.kos +
+      (s.durationMs != null ? " &middot; Duration: " + formatDuration(s.durationMs) : "") +
+      (isEnded ? " &middot; Ended " + esc(formatEventDate(r.endedAt)) : "") +
+      "</p></details></div>"
+    );
+  }
+
+  function floorRow(r, d, f) {
+    var entry = r.floors[f];
+    var e = floorElapsed(r, f);
+    return (
+      '<tr><td><span class="pb-floor">FM ' + f + "</span></td>" +
+      "<td>" + esc(formatClock(entry.at)) + "</td>" +
+      "<td>" + formatDuration(e) + "</td>" +
+      '<td><button class="small" data-action="add-death" data-run="' + r.id + '" data-floor="' + f + '">KO +</button> <span class="tag ko">' + (entry.deaths || 0) + "</span></td>" +
+      '<td><input class="note-input" type="text" data-action="note" data-run="' + r.id + '" data-floor="' + f + '" value="' + esc(entry.note) + '" placeholder="Died here? Trap? Note..."></td></tr>'
+    );
+  }
+
+  function formatEventDate(iso) {
+    try { return new Date(iso).toLocaleString(); } catch (err) { return String(iso); }
+  }
+  function formatClock(iso) {
+    try { return new Date(iso).toLocaleTimeString(); } catch (err) { return String(iso); }
+  }
+
+  function renderBests() {
+    var out = $("bests-output");
+    if (!out) { return; }
+    var bests = computeBests(runs);
+    var html = "";
+    Object.keys(bests).forEach(function (id) {
+      var d = bests[id].dungeon;
+      var deepest = bests[id].deepest;
+      html += "<h2>" + esc(d.name) + "</h2>";
+      html += '<div class="card">';
+      html += deepest
+        ? '<p class="pb-floor">Deepest floor: FM ' + deepest.floor + "</p><p class=\"tiny\">Recorded " + esc(formatEventDate(deepest.at)) + "</p>"
+        : '<p class="empty tiny">No floors reached yet.</p>';
+      var rowsHtml = bests[id].milestones.filter(function (m) { return m.best; }).map(function (m) {
+        var run = findRun(m.best.runId);
+        return "<tr><td>Floor " + m.floor + "</td><td class=\"pb-ms\">" + formatDuration(m.best.ms) + "</td><td class=\"ug\">run from FM " + (run ? run.startFloor : "") + ", " + esc(formatEventDate(run ? run.startedAt : "")) + "</td></tr>";
+      }).join("");
+      if (rowsHtml) {
+        html += '<table><thead><tr><th>Checkpoint</th><th>Best time</th><th>From</th></tr></thead><tbody>' + rowsHtml + "</tbody></table>";
+      } else {
+        html += '<p class="empty tiny">No checkpoint times yet. Log floors during a run to build best times.</p>';
+      }
+      html += "</div>";
+    });
+    out.innerHTML = html;
+  }
+
+  function renderReference() {
+    var pills = $("ref-pills");
+    var out = $("ref-output");
+    if (!pills || !out) { return; }
+    pills.innerHTML = Object.keys(DUNGEONS).map(function (id) {
+      return '<button class="pill" role="tab" data-ref="' + id + '" aria-selected="' + (state.refDungeon === id) + '">' + esc(DUNGEONS[id].name) + "</button>";
+    }).join("");
+    var d = checkDungeon(state.refDungeon);
+    var html = "";
+    html += "<h2>" + esc(d.itemNoun) + "s (" + esc(d.short) + ")</h2>";
+    html += '<div class="cards">' + d.pomanders.map(function (p) {
+      return '<div class="ref-card"><div class="name">' + esc(d.itemNoun) + " of " + esc(p.name) + '</div><div class="effect">' + esc(p.effect) + '</div><div class="tip">' + esc(p.tip || "") + "</div></div>";
+    }).join("") + "</div>";
+    html += "<h2>Floor Events (Enchantments)</h2><p class=\"tiny\">Floors can carry up to three enchantments; positive and negative ones can mix.</p>";
+    html += '<div class="cards">' + d.floorEffects.map(function (e) {
+      return '<div class="ref-card ' + esc(e.kind) + '"><div class="name">' + esc(e.name) + '</div><div class="effect">' + esc(e.desc) + "</div></div>";
+    }).join("") + "</div>";
+    html += "<h2>Traps &amp; Floor Hazards</h2>";
+    html += '<div class="cards">' + d.traps.map(function (t) {
+      return '<div class="ref-card ' + esc(t.kind === "danger" ? "bad" : "") + '"><div class="name">' + esc(t.name) + '</div><div class="effect">' + esc(t.desc) + '</div><div class="tip">' + esc(t.tip || "") + "</div></div>";
+    }).join("") + "</div>";
+    out.innerHTML = html;
+  }
+
+  function renderChecklists() {
+    var pills = $("check-pills");
+    var out = $("check-output");
+    if (!pills || !out) { return; }
+    pills.innerHTML = Object.keys(DUNGEONS).map(function (id) {
+      return '<button class="pill" role="tab" data-check="' + id + '" aria-selected="' + (state.checkDungeon === id) + '">' + esc(DUNGEONS[id].name) + "</button>";
+    }).join("");
+    var d = checkDungeon(state.checkDungeon);
+    var items = checklistFor(state.checkDungeon);
+    var html = '<div class="card"><div class="btn-row"><button class="small ghost" data-action="reset-checklist" data-check="' + state.checkDungeon + '">Reset to defaults</button></div>';
+    html += items.map(function (item, i) {
+      return '<div class="check-item"><input type="checkbox" data-action="check-toggle" data-idx="' + i + '" data-check="' + state.checkDungeon + '"' + (item.done ? " checked" : "") +
+        '><input type="text" data-action="check-text" data-idx="' + i + '" data-check="' + state.checkDungeon + '" value="' + esc(item.text) + '"' + (item.done ? ' class="done"' : "") +
+        '><button class="danger small" data-action="check-delete" data-idx="' + i + '" data-check="' + state.checkDungeon + '">x</button></div>';
+    }).join("");
+    html += '<div class="row" style="margin-top:0.6rem"><input type="text" id="new-check-item" placeholder="Add an item..."><button class="primary small" data-action="check-add" data-check="' + state.checkDungeon + '">Add</button></div></div>';
+    out.innerHTML = html;
+  }
+
+  /* ---- events ---- */
+
+  document.addEventListener("click", function (e) {
+    var tabBtn = e.target.closest ? e.target.closest(".tab-btn") : null;
+    if (tabBtn) {
+      state.tab = tabBtn.getAttribute("data-tab");
+      document.querySelectorAll(".tab-btn").forEach(function (b) {
+        b.setAttribute("aria-selected", b === tabBtn ? "true" : "false");
+      });
+      document.querySelectorAll(".tab-panel").forEach(function (p) {
+        p.classList.toggle("active", p.id === "panel-" + state.tab);
+      });
+      return;
+    }
+
+    var ref = e.target.closest ? e.target.closest("[data-ref]") : null;
+    if (ref) { state.refDungeon = ref.getAttribute("data-ref"); renderReference(); return; }
+
+    var chk = e.target.closest ? e.target.closest("[data-check]") : null;
+    if (chk && chk.getAttribute("data-check") && chk.hasAttribute && !chk.hasAttribute("data-idx")) {
+      state.checkDungeon = chk.getAttribute("data-check");
+      renderChecklists();
+      return;
+    }
+
+    var act = e.target.closest ? e.target.closest("[data-action]") : null;
+    if (!act) { return; }
+    var action = act.getAttribute("data-action");
+
+    if (action === "log-floor") {
+      applyToRun(act.getAttribute("data-run"), function (r) { return logFloor(r, {}); });
+    } else if (action === "add-death") {
+      applyToRun(act.getAttribute("data-run"), function (r) { return logDeath(r, parseInt(act.getAttribute("data-floor"), 10)); });
+    } else if (action === "end-run") {
+      applyToRun(act.getAttribute("data-run"), function (r) {
+        r.endedAt = new Date().toISOString();
+        return r;
+      });
+    } else if (action === "delete-run") {
+      if (window.confirm) {
+        window.confirm("Delete this run and its log/notes? This cannot be undone.") && deleteRun(act.getAttribute("data-run"));
+      } else {
+        deleteRun(act.getAttribute("data-run"));
+      }
+    } else if (action === "start-run") {
+      var id = (document.getElementById("new-dungeon") || {}).value || "potd";
+      var start = parseInt((document.getElementById("new-start") || {}).value, 10) || 1;
+      runs.push(createRun(id, start));
+      saveRuns();
+      render();
+    } else if (action === "reset-checklist") {
+      checklists[act.getAttribute("data-check")] = defaultChecklist(act.getAttribute("data-check"));
+      saveChecklists();
+      renderChecklists();
+    } else if (action === "check-delete") {
+      var dd = act.getAttribute("data-check");
+      checklists[dd].splice(parseInt(act.getAttribute("data-idx"), 10), 1);
+      saveChecklists();
+      renderChecklists();
+    } else if (action === "check-add") {
+      var cc = act.getAttribute("data-check");
+      var input = document.getElementById("new-check-item");
+      var text = input && input.value ? input.value.trim() : "";
+      if (text) {
+        checklists[cc].push({ text: text, done: false });
+        saveChecklists();
+        renderChecklists();
+        var fresh = document.getElementById("new-check-item");
+        if (fresh && fresh.focus) { fresh.focus(); }
+      }
+    }
+  });
+
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el && el.id === "new-dungeon") { syncStartFloors(); return; }
+    if (el && el.hasAttribute && el.hasAttribute("data-action") && el.getAttribute("data-action") === "check-toggle") {
+      var dd = el.getAttribute("data-check");
+      var item = checklists[dd] && checklists[dd][parseInt(el.getAttribute("data-idx"), 10)];
+      if (item) { item.done = Boolean(el.checked); saveChecklists(); renderChecklists(); }
+    }
+  });
+
+  document.addEventListener("input", function (e) {
+    var el = e.target;
+    if (el && el.hasAttribute && el.hasAttribute("data-action")) {
+      if (el.getAttribute("data-action") === "note") {
+        var run = findRun(el.getAttribute("data-run"));
+        if (!run) { return; }
+        var f = parseInt(el.getAttribute("data-floor"), 10);
+        if (run.floors[f]) {
+          run.floors[f].note = el.value;
+          safeSet(STORAGE_KEYS.runs, runs);
+        }
+      } else if (el.getAttribute("data-action") === "check-text") {
+        var dd = el.getAttribute("data-check");
+        var item = checklists[dd] && checklists[dd][parseInt(el.getAttribute("data-idx"), 10)];
+        if (item) { item.text = el.value; saveChecklists(); }
+      }
+    }
+  });
+
+  function deleteRun(id) {
+    runs = runs.filter(function (r) { return r.id !== id; });
+    saveRuns();
+    render();
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
