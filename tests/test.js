@@ -364,6 +364,31 @@ test("escapeHtml neutralizes markup and quotes", function () {
   assert.equal(L.escapeHtml("Died to it ' quoting &  <script>"), "Died to it &#39; quoting &amp;  &lt;script&gt;");
 });
 
+test("UI: actual Start Run button creates, renders and persists each dungeon", function () {
+  for (const dungeon of ["potd", "hoh", "eo"]) {
+    const ctx = makeContext();
+    vm.createContext(ctx);
+    scripts.forEach(code => new vm.Script(code).runInContext(ctx));
+    ctx.__memo["new-dungeon"].value = dungeon;
+    ctx.__memo["new-start"].value = "1";
+    const tag = html.match(/<button\b[^>]*id="btn-start-run"[^>]*>/)[0];
+    const button = stubEl("button");
+    for (const match of tag.matchAll(/([\w-]+)="([^"]*)"/g)) button.attrs[match[1]] = match[2];
+    button.closest = function (selector) {
+      if (selector === ".tab-btn") return null;
+      const attr = /^\[([^\]]+)\]$/.exec(selector);
+      return attr && this.hasAttribute(attr[1]) ? this : null;
+    };
+    ctx.fire("click", {target: button});
+    const runs = JSON.parse(ctx.localStorage.getItem("dd_runs_v1") || "[]");
+    assert.equal(runs.length, 1, dungeon + ": actual button must create a run");
+    assert.equal(runs[0].dungeon, dungeon);
+    assert.equal(runs[0].startFloor, 1);
+    assert(!ctx.__memo["active-runs"].innerHTML.includes("No runs in progress"));
+    assert(ctx.__memo["active-runs"].innerHTML.includes(runs[0].id));
+  }
+});
+
 /* ---------- report ---------- */
 
 console.log("");
